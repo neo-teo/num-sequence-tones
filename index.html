@@ -1,0 +1,210 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+	<meta charset="utf-8" />
+	<title>Simple HTML</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<script src="https://unpkg.com/tone"></script>
+	<script>
+		class Fibonacci {
+			constructor() {
+				this.sequence = [];
+			}
+
+			nextNum() {
+				const len = this.sequence.length;
+				if (len === 0) {
+					this.sequence.push(0);
+					return 0;
+				}
+				if (len === 1) {
+					this.sequence.push(1);
+					return 1;
+				}
+
+				const next = this.sequence[len - 1] + this.sequence[len - 2];
+				this.sequence.push(next);
+				return next;
+			}
+
+			getSequence() {
+				return this.sequence;
+			}
+		}
+
+		const fib = new Fibonacci();
+
+		/** DOM LOGIC */
+		function renderNum(n) {
+			let first = n;
+			let other;
+			if (n > 100) {
+				first = n.toString().slice(0, 3);
+				other = n.toString().slice(3);
+			}
+
+			let ret = `
+			<div class="num">
+				<div class="firstThree">${first}</div>
+			`;
+			if (other) {
+				ret += `<div class="rest">${other}</div>`;
+			}
+			ret += `</div>`;
+
+			return ret;
+		}
+
+		function drawFib() {
+			const sum = document.getElementById('sum');
+			const curr = document.getElementById('curr');
+
+			let sequence = fib.getSequence();
+
+			const newNum = sequence[sequence.length - 1];
+			curr.innerHTML = renderNum(newNum);
+
+			let sumHtml = '';
+
+			for (let n of sequence.slice(0, -1)) {
+				sumHtml += renderNum(n);
+			}
+
+			sum.innerHTML = sumHtml;
+		}
+
+
+		/** SOUND LOGIC */
+		const baseFreq = 261.63; // C4
+		const pentatonicIntervals = [0, 2, 4, 7, 9]; // C D E G A
+
+		function getNoteFromFib(fibNum) {
+			const scaleIndex = fibNum % pentatonicIntervals.length;
+			const octaveShift = Math.floor(fibNum / pentatonicIntervals.length) % 2;
+			const semitone = pentatonicIntervals[scaleIndex] + 12 * octaveShift;
+			return baseFreq * Math.pow(2, semitone / 12);
+		}
+
+		function playNote() {
+			const synth = new Tone.Synth().toDestination();
+			synth.volume.value = -6;
+			const newNum = fib.nextNum();
+			const noteFreq = getNoteFromFib(newNum);
+			synth.triggerAttackRelease(noteFreq, "8n");
+
+			drawFib();
+		}
+
+		let intervalId;
+		let currentInterval = 800;
+		const minInterval = 150; // minimum interval in ms
+
+		function playSong() {
+			if (intervalId) {
+				clearInterval(intervalId);
+			}
+
+			playNote();
+
+			// accelerating interval
+			intervalId = setInterval(function () {
+				playNote();
+
+				if (currentInterval > minInterval) {
+					clearInterval(intervalId);
+					currentInterval = Math.max(currentInterval - 45, minInterval);
+					intervalId = setInterval(arguments.callee, currentInterval);
+				}
+			}, currentInterval);
+		}
+
+		// Cleanup when page is closed/refreshed
+		window.onbeforeunload = function () {
+			if (intervalId) {
+				clearInterval(intervalId);
+				intervalId = null;
+				currentInterval = 2000;
+			}
+		};
+
+	</script>
+
+	<style>
+		body {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			min-height: 90vh;
+			background-color: rgb(0, 15, 0);
+		}
+
+		#sum {
+			position: absolute;
+			top: 0px;
+			left: 10px;
+			color: white;
+			z-index: -1;
+			user-select: none;
+
+
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			flex-wrap: wrap;
+		}
+
+		#curr {
+			color: rgb(255, 228, 76);
+		}
+
+		.num {
+			display: flex;
+			align-items: start;
+			gap: 5px;
+		}
+
+		.firstThree {
+			text-align: center;
+			font-size: 30px;
+		}
+
+		#curr .firstThree {
+			font-size: 100px;
+		}
+
+		.rest {
+			margin-top: 5px;
+			font-size: 10px;
+			/* wrap text ...  */
+			max-width: 50px;
+			word-break: break-all;
+		}
+
+		#curr .rest {
+			font-size: 33px;
+			margin-top: 20px;
+			max-width: 180px;
+		}
+
+		button {
+			z-index: 1;
+			cursor: pointer;
+			font-size: 14px;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="sum"></div>
+	<div id="curr">
+		<div class="num">
+			<div class="firstThree">the fibonacci sequence</div>
+			<div class="rest"> </div>
+		</div>
+	</div>
+	<button onclick="playSong()">fib</button>
+</body>
+
+</html>
