@@ -3,13 +3,40 @@
 
 <head>
 	<meta charset="utf-8" />
-	<title>Simple HTML</title>
+	<title>Mathematical Sequence Tones</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
-	<script src="https://unpkg.com/tone"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 	<script>
-		class Fibonacci {
+		// base class for all sequence generators
+		class SequenceGenerator {
 			constructor() {
 				this.sequence = [];
+			}
+
+			// generate and return the next number in the sequence
+			nextNum() {
+				throw new Error("Method 'nextNum()' must be implemented by subclass");
+			}
+
+			// get the current sequence
+			getSequence() {
+				return this.sequence;
+			}
+
+			// reset the sequence
+			reset() {
+				this.sequence = [];
+			}
+
+			// get name of the sequence (for display)
+			getName() {
+				return this.constructor.name;
+			}
+		}
+
+		class Fibonacci extends SequenceGenerator {
+			constructor() {
+				super();
 			}
 
 			nextNum() {
@@ -22,18 +49,149 @@
 					this.sequence.push(1);
 					return 1;
 				}
-
 				const next = this.sequence[len - 1] + this.sequence[len - 2];
 				this.sequence.push(next);
 				return next;
 			}
+		}
 
-			getSequence() {
-				return this.sequence;
+		class Collatz extends SequenceGenerator {
+			constructor(startNum = 27) {
+				super();
+				this.startNum = startNum;
+			}
+
+			setStartNum(num) {
+				if (num < 1) num = 1;
+				this.startNum = num;
+				this.reset();
+			}
+
+			nextNum() {
+				const len = this.sequence.length;
+
+				// Start the sequence with the starting number
+				if (len === 0) {
+					this.sequence.push(this.startNum);
+					return this.startNum;
+				}
+
+				const lastNum = this.sequence[len - 1];
+
+				// If we've reached 1, reset with a new starting number
+				if (lastNum === 1) {
+					this.reset();
+					this.setStartNum(this.startNum * 2 + 1); // Choose a new interesting starting point
+					return this.nextNum();
+				}
+
+				// Collatz rule: if even, divide by 2; if odd, multiply by 3 and add 1
+				const next = lastNum % 2 === 0 ? lastNum / 2 : lastNum * 3 + 1;
+				this.sequence.push(next);
+				return next;
+			}
+
+			getName() {
+				return `Collatz (${this.startNum})`;
 			}
 		}
 
-		const fib = new Fibonacci();
+		// // Prime numbers sequence
+		// class Primes extends SequenceGenerator {
+		// 	constructor() {
+		// 		super();
+		// 	}
+
+		// 	isPrime(num) {
+		// 		if (num <= 1) return false;
+		// 		if (num <= 3) return true;
+		// 		if (num % 2 === 0 || num % 3 === 0) return false;
+
+		// 		// Check using 6k +/- 1 optimization
+		// 		for (let i = 5; i * i <= num; i += 6) {
+		// 			if (num % i === 0 || num % (i + 2) === 0) return false;
+		// 		}
+		// 		return true;
+		// 	}
+
+		// 	nextNum() {
+		// 		let candidate = this.sequence.length === 0 ? 2 : this.sequence[this.sequence.length - 1] + 1;
+
+		// 		// Find the next prime number
+		// 		while (!this.isPrime(candidate)) {
+		// 			candidate++;
+		// 		}
+
+		// 		this.sequence.push(candidate);
+		// 		return candidate;
+		// 	}
+		// }
+
+		// // Square numbers sequence
+		// class Squares extends SequenceGenerator {
+		// 	constructor() {
+		// 		super();
+		// 	}
+
+		// 	nextNum() {
+		// 		const n = this.sequence.length + 1; // 1, 2, 3, ...
+		// 		const square = n * n; // 1, 4, 9, ...
+		// 		this.sequence.push(square);
+		// 		return square;
+		// 	}
+		// }
+
+		// // Triangular numbers sequence
+		// class Triangular extends SequenceGenerator {
+		// 	constructor() {
+		// 		super();
+		// 	}
+
+		// 	nextNum() {
+		// 		const n = this.sequence.length + 1; // 1, 2, 3, ...
+		// 		const triangular = (n * (n + 1)) / 2; // 1, 3, 6, 10, ...
+		// 		this.sequence.push(triangular);
+		// 		return triangular;
+		// 	}
+		// }
+
+		// // Lucas numbers sequence
+		// class Lucas extends SequenceGenerator {
+		// 	constructor() {
+		// 		super();
+		// 	}
+
+		// 	nextNum() {
+		// 		const len = this.sequence.length;
+		// 		if (len === 0) {
+		// 			this.sequence.push(2);
+		// 			return 2;
+		// 		}
+		// 		if (len === 1) {
+		// 			this.sequence.push(1);
+		// 			return 1;
+		// 		}
+		// 		const next = this.sequence[len - 1] + this.sequence[len - 2];
+		// 		this.sequence.push(next);
+		// 		return next;
+		// 	}
+		// }
+
+		// Available sequence generators
+		const generators = {
+			fibonacci: new Fibonacci(),
+			collatz: new Collatz(27),
+			// primes: new Primes(),
+			// squares: new Squares(),
+			// triangular: new Triangular(),
+			// lucas: new Lucas()
+		};
+
+		// Current active generator
+		let activeGenerator = generators.fibonacci;
+
+
+
 
 		/** DOM LOGIC */
 		function renderNum(n) {
@@ -45,9 +203,9 @@
 			}
 
 			let ret = `
-			<div class="num">
-				<div class="firstThree">${first}</div>
-			`;
+  <div class="num">
+    <div class="firstThree">${first}</div>
+  `;
 			if (other) {
 				ret += `<div class="rest">${other}</div>`;
 			}
@@ -56,32 +214,49 @@
 			return ret;
 		}
 
-		function drawFib() {
+		function drawSequence() {
+
 			const sum = document.getElementById('sum');
 			const curr = document.getElementById('curr');
+			let sequence = activeGenerator.getSequence();
 
-			let sequence = fib.getSequence();
-
+			if (sequence.length === 0) {
+				curr.innerHTML = `
+					<div class="num">
+						<div class="firstThree">${activeGenerator.getName()}</div>
+						<div class="rest">Sequence</div>
+					</div>
+					`;
+				return;
+			}
 			const newNum = sequence[sequence.length - 1];
 			curr.innerHTML = renderNum(newNum);
-
 			let sumHtml = '';
-
 			for (let n of sequence.slice(0, -1)) {
 				sumHtml += renderNum(n);
 			}
-
 			sum.innerHTML = sumHtml;
 		}
+
+
 
 
 		/** SOUND LOGIC */
 		const baseFreq = 261.63; // C4
 		const pentatonicIntervals = [0, 2, 4, 7, 9]; // C D E G A
 
-		function getNoteFromFib(fibNum) {
-			const scaleIndex = fibNum % pentatonicIntervals.length;
-			const octaveShift = Math.floor(fibNum / pentatonicIntervals.length) % 2;
+		function getNoteFromNum(num) {
+			num = Math.abs(num);
+
+			// different mapping strategies for different ranges
+			const scaleIndex = num % pentatonicIntervals.length;
+			const octaveShift = Math.floor(num / pentatonicIntervals.length) % 2;
+
+
+			// Adjust octave based on number size using log scale
+			// This keeps very large numbers (like in Collatz) from going too high pitch
+			// const octaveShift = Math.min(Math.floor(Math.log10(num + 1)), 3);
+
 			const semitone = pentatonicIntervals[scaleIndex] + 12 * octaveShift;
 			return baseFreq * Math.pow(2, semitone / 12);
 		}
@@ -89,11 +264,10 @@
 		function playNote() {
 			const synth = new Tone.Synth().toDestination();
 			synth.volume.value = -6;
-			const newNum = fib.nextNum();
-			const noteFreq = getNoteFromFib(newNum);
+			const newNum = activeGenerator.nextNum();
+			const noteFreq = getNoteFromNum(newNum);
 			synth.triggerAttackRelease(noteFreq, "8n");
-
-			drawFib();
+			drawSequence();
 		}
 
 		let intervalId;
@@ -119,15 +293,29 @@
 			}, currentInterval);
 		}
 
-		// Cleanup when page is closed/refreshed
-		window.onbeforeunload = function () {
+		function stopSong() {
 			if (intervalId) {
 				clearInterval(intervalId);
 				intervalId = null;
-				currentInterval = 2000;
 			}
-		};
+			currentInterval = 500;
+		}
 
+		function changeSequence(sequenceName) {
+			stopSong();
+
+			// Change active generator
+			activeGenerator = generators[sequenceName];
+			activeGenerator.reset();
+
+			// Update UI
+			document.getElementById('sum').innerHTML = '';
+			drawSequence();
+		}
+
+
+		window.onbeforeunload = stopSong;
+		window.onload = drawSequence;
 	</script>
 
 	<style>
@@ -137,26 +325,24 @@
 			align-items: center;
 			justify-content: center;
 			min-height: 90vh;
-			background-color: rgb(0, 15, 0);
+			background-color: rgb(10, 10, 20);
 		}
 
 		#sum {
 			position: absolute;
 			top: 0px;
-			left: 10px;
 			color: white;
 			z-index: -1;
 			user-select: none;
-
-
 			display: flex;
-			align-items: center;
-			gap: 10px;
+			width: 95vw;
+			gap: 33px;
 			flex-wrap: wrap;
+			padding: 10px;
 		}
 
 		#curr {
-			color: rgb(255, 228, 76);
+			color: rgb(255, 196, 0);
 		}
 
 		.num {
@@ -193,6 +379,45 @@
 			cursor: pointer;
 			font-size: 14px;
 		}
+
+		.controls {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			margin-top: 20px;
+			gap: 10px;
+		}
+
+		.play-controls {
+			display: flex;
+			gap: 10px;
+			margin-bottom: 20px;
+		}
+
+		.sequence-selector {
+			display: flex;
+			flex-wrap: wrap;
+			justify-content: center;
+			gap: 10px;
+			max-width: 600px;
+		}
+
+		.sequence-header {
+			font-size: 24px;
+			margin-bottom: 15px;
+			text-align: center;
+		}
+
+		@media (max-width: 600px) {
+			#curr .firstThree {
+				font-size: 70px;
+			}
+
+			.sequence-selector {
+				flex-direction: column;
+				align-items: center;
+			}
+		}
 	</style>
 </head>
 
@@ -200,11 +425,27 @@
 	<div id="sum"></div>
 	<div id="curr">
 		<div class="num">
-			<div class="firstThree">the fibonacci sequence</div>
-			<div class="rest"> </div>
+			<div class="firstThree">Mathematical</div>
+			<div class="rest">Music</div>
 		</div>
 	</div>
-	<button onclick="playSong()">fib</button>
+
+	<div class="controls">
+
+		<div class="sequence-selector">
+			<button id="fibonacciBtn" class="seq-button" onclick="changeSequence('fibonacci')">Fibonacci</button>
+			<button id="collatzBtn" class="seq-button" onclick="changeSequence('collatz')">Collatz</button>
+			<!-- <button id="primesBtn" class="seq-button" onclick="changeSequence('primes')">Primes</button>
+			<button id="squaresBtn" class="seq-button" onclick="changeSequence('squares')">Squares</button>
+			<button id="triangularBtn" class="seq-button" onclick="changeSequence('triangular')">Triangular</button>
+			<button id="lucasBtn" class="seq-button" onclick="changeSequence('lucas')">Lucas</button> -->
+		</div>
+
+		<div class="play-controls">
+			<button onclick="playSong()">&#x23F5;</button>
+			<button onclick="stopSong()">&#x23F8;</button>
+		</div>
+	</div>
 </body>
 
 </html>
